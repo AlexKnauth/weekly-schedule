@@ -10,6 +10,7 @@
          time-period-start
          time-period-duration
          time-period-end
+         time-period/start+end
          time-of-week time-of-week?
          time-of-week-day
          time-of-week-hour
@@ -46,6 +47,10 @@
 (define (time-period-end tp)
   (time-of-week+ (time-period-start tp) (time-period-duration tp)))
 
+;; time-period/start+end : TimeofWeek TimeofWeek -> TimePeriod
+(define (time-period/start+end start end)
+  (time-period start (time-of-week∆ start end)))
+
 ;; earliest-of-day : [Listof TimeofWeek] -> TimeofWeek
 (define (earliest-of-day tows)
   (argmin time-of-day-hour-fraction tows))
@@ -64,10 +69,18 @@
 (define (time-of-week+ tow dur)
   (match* [tow dur]
     [[(time-of-week d h m) (duration ∆d ∆h ∆m)]
-     (define-values [eh m*] (quotient/remainder (+ m ∆m) 60))
-     (define-values [ed h*] (quotient/remainder (+ h ∆h eh) 24))
-     (define-values [_w d*] (quotient/remainder (+ d ∆d ed) 7))
+     (define-values [eh m*] (quo/mod (+ m ∆m) 60))
+     (define-values [ed h*] (quo/mod (+ h ∆h eh) 24))
+     (define-values [_w d*] (quo/mod (+ d ∆d ed) 7))
      (time-of-week d* h* m*)]))
+
+(define (time-of-week∆ a b)
+  (match* [a b]
+    [[(time-of-week ad ah am) (time-of-week bd bh bm)]
+     (define-values [eh ∆m] (quo/mod (- bm am) 60))
+     (define-values [ed ∆h] (quo/mod (+ (- bh ah) eh) 24))
+     (define-values [_w ∆d] (quo/mod (+ (- bd ad) ed) 7))
+     (duration ∆d ∆h ∆m)]))
 
 ;; day-of-week=? : DayofWeek DayofWeek -> Bool
 (define (day-of-week=? a b)
@@ -92,4 +105,9 @@
              (~r m #:min-width 2 #:pad-string "0"))]))
 
 ;; ------------------------------------------------------------------------
+
+(define (quo/mod a b)
+  (define mod (modulo a b))
+  (define quo (/ (- a mod) b))
+  (values quo mod))
 
